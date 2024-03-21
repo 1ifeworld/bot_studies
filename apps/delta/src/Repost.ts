@@ -1,18 +1,10 @@
 import { ponder } from '@/generated'
 import {
   postGatewayABI,
-  decodeCreateAssetMsgBody,
   decodeAddItemMsgBody,
   remove0xPrefix,
   type Post,
   MessageTypes,
-  ChannelAccessTypes,
-  ChannelDataTypes,
-  ItemAccessTypes,
-  ItemDataTypes,
-  ChannelRoleTypes,
-  decodeRemoveItemMsgBody,
-  decodeUpdateAssetMsgBody,
   encodeCreateAssetMsgBody,
   generateMessageHash,
   encodeAddItemMsgBody
@@ -20,34 +12,31 @@ import {
 import {
   encodeAbiParameters,
   decodeFunctionData,
-  getAddress,
-  decodeAbiParameters,
-  recoverMessageAddress,
   Hex,
   Hash
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { 
   messageToCid, 
-  postToCid, 
-  USER_ID_ZERO,
-  generateReplicateImgae, 
+  generateReplicateImage, 
   getItemWithId,
-  w3sUrlFromCid   
+  w3sUpload,
+  MetadataObject,
+  sendToDb
 } from './utils'
-
 
 function getExpiration() {
   return BigInt(Math.floor(Date.now() / 1000) + 360) // 3 min buffer
 }
 
+// this becomes "fit pic channel"
 const ANCHOR_CHANNEL: string = "bafyreiel65bsc6oowv4f3i7vmutho4njze2f3bbq7d54ioe3vjydyqkz7e"
+// this becomes "ps1 channel"
 const TARGET_CHANNEL: string = "bafyreig3virwtjbscck3nudthed2zlhv3suii63idsp2ygwos5mjsy3kma"
 const botRid: bigint = BigInt(139)
 const botPrivateKey: Hash = process.env.BOT_PRIVATE_KEY as Hash
 
-ponder.on('PostGateway:NewPost', async ({ event }) => {
-  
+ponder.on('PostGateway:NewPost', async ({ event }) => {  
 
   /* ************************************************
 
@@ -99,6 +88,8 @@ ponder.on('PostGateway:NewPost', async ({ event }) => {
         // if id already exists, dont re add it
         if (resp.item?.id) return
         console.log("ITEM NOT PRESENT IN TARGET CHANNEL. CONTINUING TO PROCESSING")
+        if (!resp.item?.uri) return
+        console.log("Item does not have a uri")        
 
         /* ************************************************
 
@@ -112,8 +103,8 @@ ponder.on('PostGateway:NewPost', async ({ event }) => {
 
         const characterType = "the chosen one"
 
-        const replicateImageUrl = await generateReplicateImgae(
-          resp.item?.uri,
+        const replicateImageUrl = await generateReplicateImage(
+          resp.item.uri,
           "Video Game",
           `pixelated glitchchart of close-up of ${characterType}, ps1 playstation psx gamecube game radioactive dreams screencapture, bryce 3d`
         )
@@ -122,49 +113,116 @@ ponder.on('PostGateway:NewPost', async ({ event }) => {
 
         /*
             UPLOAD TO W3S
-        */            
+        */          
+        
+        if (!process.env.MEDIA_SERVICE_SECRET) {
+          console.log("media serivce secret missing")
+          return
+        }
+
+        // fetch replicate file
+        const replicateResp = await fetch(replicateImageUrl)
+
+        // Ensure the request was successful
+        if (!replicateResp.ok) {
+          throw new Error(`Failed to fetch: ${replicateResp.statusText}`);
+        }          
+
+        // convert replciate resp into file
+        const replicateBlob = await replicateResp.blob()          
+        const fileName = `botty_from_${addItemCid}`
+        const replicateImageFile = new File([replicateBlob], fileName, { type: replicateBlob.type });
+
+        // setup form for upload
+        const w3sFormData = new FormData()
+        w3sFormData.append('file', replicateImageFile)
+        const { cid: replicateImageCid } = await w3sUpload(w3sFormData, process.env.MEDIA_SERVICE_SECRET)
 
         /*
             UPLOAD TO METADATA SERVER
         */       
+
+        const metadataObject: MetadataObject = {
+          name: fileName,
+          description: '',
+          image: replicateImageCid,
+          animationUri: '',
+        }            
+
+        await sendToDb({
+          key: replicateImageCid,
+          value: {
+            ...metadataObject,
+            contentType: replicateImageFile.type,
+          },
+        })            
        
         /*
             SUBMIT CREATE/ADD ITEM BATCH POST
         */               
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        // generate mirror add item
-
         // set up sig + account signer instance
         const sigDeadline = getExpiration()
         const account = privateKeyToAccount(botPrivateKey)
 
+        // generate create item post
+
+        const createItemMsgType = 1
+        const createItemMsgBody = encodeCreateAssetMsgBody({
+          data: {
+            dataType: 1,
+            contents: encodeAbiParameters(
+              [{ name: 'itemUri', type: 'string' }],
+              [replicateImageCid],
+            ),
+          },
+          access: {
+            accessType: 1,
+            contents: encodeAbiParameters(
+              [
+                { name: 'members', type: 'uint256[]' },
+                { name: 'roles', type: 'uint256[]' },
+              ],
+              // Hardcoding in Roles.ADMIN for item creators
+              [[botRid], [BigInt(2)]],
+            ),
+          },
+        })
+        // if (!createItemMsgBody?.msgBody) return false
+        // generate hash to include in post
+        const createItemMessageHash = generateMessageHash({
+          rid: botRid,
+          timestamp: BigInt(sigDeadline),
+          msgType: createItemMsgType as number,
+          msgBody: createItemMsgBody?.msgBody as Hex,
+        })
+        const createItemMsgHashForSig = remove0xPrefix({
+          bytes32Hash: createItemMessageHash,
+        })
+    
+        const createItemSig = await account.signMessage(
+            {message: createItemMsgHashForSig}
+          ) as Hash
+          const createItemPost: Post = {
+            signer: account.address,
+            message: {
+              rid: botRid,
+              timestamp: BigInt(sigDeadline),
+              msgType: createItemMsgType as number,
+              msgBody: createItemMsgBody?.msgBody as Hex,
+            },
+            hashType: 1,
+            hash: createItemMessageHash,
+            sigType: 1,
+            sig: createItemSig,
+          }            
+          // Create itemCid using canonical types
+          const replicateItemCid = (await messageToCid(createItemPost.message)).cid.toString()
+
         // generate add item post
         const addItemMsgType: number = 5
         const addItemMsgBody = encodeAddItemMsgBody({
-          itemCid: addItemCid,
+          itemCid: replicateItemCid,
           channelCid: TARGET_CHANNEL,
         })
         // if (!addItemMsgBody?.msgBody) return false
@@ -182,7 +240,7 @@ ponder.on('PostGateway:NewPost', async ({ event }) => {
           signer: account.address,
           message: {
             rid: botRid,
-            timestamp: sigDeadline,
+            timestamp: BigInt(sigDeadline),
             msgType: addItemMsgType as number,
             msgBody: addItemMsgBody?.msgBody as Hex,
           },
@@ -192,11 +250,9 @@ ponder.on('PostGateway:NewPost', async ({ event }) => {
           sig: addItemSig,
         }        
 
-        // console.log("add item post: ", addItemPost)
-
         // submit post to relayer
         const postBatchResponse = await relayPostBatch([
-          // createItemPost,
+          createItemPost,
           addItemPost,
         ])
   
@@ -205,9 +261,7 @@ ponder.on('PostGateway:NewPost', async ({ event }) => {
         if (postBatchResponse.success) {
           const transactionHash = postBatchResponse.hash
           console.log("transactionHash", transactionHash)
-    
         } 
-        // return true
       }
     }
   }

@@ -9,8 +9,10 @@
     "format": "biome format . --write"
   },
   "dependencies": {
+    "@ipld/car": "^5.3.0",
     "@ipld/dag-cbor": "^9.1.0",
     "@ponder/core": "^0.2.5",
+    "@ucanto/core": "^9.0.1",
     "base64url": "^3.0.1",
     "graphql": "^16.8.0",
     "graphql-request": "^6.1.0",

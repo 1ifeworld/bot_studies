@@ -90,12 +90,55 @@ ponder.on('PostGateway:NewPost', async ({ event }) => {
           return
         }
         console.log("MSG FROM ANCHOR CHANNEL DETECTED")
+        // check if item already exists in target channel
+        const resp = await getItemWithId({id: addItemCid})
+        if (!resp || !resp.item?.id) return
+        console.log("ITEM NOT PRESENT IN TARGET CHANNEL. CONTINUING TO PROCESSING")
 
         /* ************************************************
 
                         MESSAGING PROCESSING
 
         ************************************************ */        
+
+        /*
+            GENERATE REPLICATE OUTPUT
+        */
+
+        /*
+            UPLOAD TO W3S
+        */            
+
+        /*
+            UPLOAD TO METADATA SERVER
+        */       
+       
+        /*
+            SUBMIT CREATE/ADD ITEM BATCH POST
+        */               
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         // generate mirror add item
 

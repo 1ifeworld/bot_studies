@@ -1,7 +1,10 @@
 {
   "compilerOptions": {
+    "target": "es6",
+    "lib": ["dom", "dom.iterable", "esnext"],    
     "moduleResolution": "node",
-    "target": "es2016",
+    // "target": "ESNext",
+    // "module": "CommonJS",
     "module": "ESNext",
     "strict": true,
     "resolveJsonModule": true,
@@ -13,3 +16,21 @@
     "outDir": "./dist"
   }
 }
+
+// {
+//   "compilerOptions": {
+//     "target": "ESNext",
+//     "module": "ESNext",
+//     "moduleResolution": "node",
+//     "resolveJsonModule": true,
+//     "esModuleInterop": true,
+//     "strict": true,
+//     "rootDir": ".",
+//     "allowSyntheticDefaultImports": true,
+//     "paths": {
+//       "@/generated": ["./generated/index.ts"]
+//     }
+//   },
+//   "include": ["./**/*.ts"],
+//   "exclude": ["node_modules"]
+// }

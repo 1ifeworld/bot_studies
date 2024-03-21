@@ -6,6 +6,7 @@ import { addresses, postGatewayABI } from 'scrypt'
 import type { Hex } from 'viem'
 
 export async function POST(req: NextRequest) {
+  console.log("is this getting hit")
   const postsArray = await req.json()
   console.log({ postsArray })
 

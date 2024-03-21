@@ -8,23 +8,23 @@ export default createConfig({
       chainId: 42170,
       transport: http(process.env.PONDER_RPC_URL_42170)
     },
-    optimism: {
-      chainId: 10,
-      transport: http(process.env.PONDER_RPC_URL_10)
-    },
+    // optimism: {
+    //   chainId: 10,
+    //   transport: http(process.env.PONDER_RPC_URL_10)
+    // },
   },
   contracts: {
-    IdRegistry: {
-      network: 'optimism',
-      abi: idRegistryABI,
-      address: addresses.idRegistry.optimism,
-      startBlock: 115761578, // River genesis
-    },
+    // IdRegistry: {
+    //   network: 'optimism',
+    //   abi: idRegistryABI,
+    //   address: addresses.idRegistry.optimism,
+    //   startBlock: 115761578, // River genesis
+    // },
     PostGateway: {
       network: 'arbitrumNova',
       abi: postGatewayABI,
       address: addresses.postGateway.nova,
-      startBlock: 45799650, // River genesis
+      startBlock: 59775350, // Midnight morning March 21 2024
     },    
   },
 })

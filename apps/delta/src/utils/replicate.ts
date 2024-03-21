@@ -1,6 +1,6 @@
 import Replicate from "replicate";
 
-export async function generateReplicateImgae(
+export async function generateReplicateImage(
   imageUri: string,
   style: string,
   prompt: string

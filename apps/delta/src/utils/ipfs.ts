@@ -10,3 +10,7 @@ export async function messageToCid(message: Message) {
 export async function postToCid(post: Post) {
   return await Block.encode({ value: post, codec: dagCbor, hasher: sha256 })
 }
+
+export function w3sUrlFromCid({ cid }: { cid: string }) {
+  return `https://ipfs.w3s.link/ipfs/${cid}`
+}

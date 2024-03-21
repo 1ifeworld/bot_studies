@@ -27,10 +27,14 @@ import {
   Hash
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import { messageToCid, postToCid, USER_ID_ZERO } from './utils'
-import { generateReplicateImgae, getItemWithId } from './utils'
-
-
+import { 
+  messageToCid, 
+  postToCid, 
+  USER_ID_ZERO,
+  generateReplicateImgae, 
+  getItemWithId,
+  w3sUrlFromCid   
+} from './utils'
 
 
 function getExpiration() {
@@ -92,7 +96,8 @@ ponder.on('PostGateway:NewPost', async ({ event }) => {
         console.log("MSG FROM ANCHOR CHANNEL DETECTED")
         // check if item already exists in target channel
         const resp = await getItemWithId({id: addItemCid})
-        if (!resp || !resp.item?.id) return
+        // if id already exists, dont re add it
+        if (resp.item?.id) return
         console.log("ITEM NOT PRESENT IN TARGET CHANNEL. CONTINUING TO PROCESSING")
 
         /* ************************************************
@@ -104,6 +109,16 @@ ponder.on('PostGateway:NewPost', async ({ event }) => {
         /*
             GENERATE REPLICATE OUTPUT
         */
+
+        const characterType = "the chosen one"
+
+        const replicateImageUrl = await generateReplicateImgae(
+          resp.item?.uri,
+          "Video Game",
+          `pixelated glitchchart of close-up of ${characterType}, ps1 playstation psx gamecube game radioactive dreams screencapture, bryce 3d`
+        )
+        // if failed, dont continue
+        if (!replicateImageUrl) return
 
         /*
             UPLOAD TO W3S
